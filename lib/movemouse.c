@@ -26,6 +26,7 @@ movemouse(const Arg *arg)
 		return;
 	if (ISFULLSCREEN(c) && !ISFAKEFULLSCREEN(c)) /* no support moving fullscreen windows by mouse */
 		return;
+	restack(selws);
 
 	group_after = c->group;
 	if (ISMARKED(c)) {
@@ -127,11 +128,9 @@ movemouse(const Arg *arg)
 			sy = ny = ocy[0] + (ev.xmotion.y - y);
 			vsnap = hsnap = snap;
 
-			if (!ISFLOATING(c) && selws->layout->arrange) {
-				if (abs(nx - c->x) <= snap && abs(ny - c->y) <= snap)
-					continue;
+			if (!ISFLOATING(c) && selws->layout->arrange
+					&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
 				togglefloating(NULL);
-			}
 
 			for (i = 0; i < ngirders; i++) {
 				for (g = 0; g < ngroup; g++) {

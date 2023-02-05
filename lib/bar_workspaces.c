@@ -19,15 +19,10 @@ size_workspaces(Bar *bar, BarArg *a)
 			continue;
 		if (enabled(WorkspaceLabels)) {
 			c = firsttiled(ws);
-			if (c) {
-				if (c->icon && prefer_window_icons_over_workspace_labels) {
-					w += occupied_workspace_label_format_length + c->icw;
-				} else {
-					w += occupied_workspace_label_format_length + TEXTW(c->label);
-				}
-			} else {
+			if (c)
+				w += occupied_workspace_label_format_length + TEXTW(c->label);
+			else
 				w += vacant_workspace_label_format_length;
-			}
 		}
 		if (bar->vert)
 			s += bh;
@@ -49,7 +44,6 @@ draw_workspaces(Bar *bar, BarArg *a)
 	char *icon, *nexticon;
 	char label[128] = {0};
 	int wsscheme = 0, nextscheme = 0;
-	int draw_window_icon = 0;
 
 	nextwsicon(bar, workspaces, &nextws, &nexticon, &nextw);
 
@@ -79,43 +73,18 @@ draw_workspaces(Bar *bar, BarArg *a)
 		}
 
 		if (ws) {
-			draw_window_icon = 0;
 			if (enabled(WorkspaceLabels)) {
 				c = firsttiled(ws);
 				if (c) {
-					if (c->icon && prefer_window_icons_over_workspace_labels) {
-						draw_window_icon = 1;
-						w += occupied_workspace_label_format_length;
-						if (swap_occupied_workspace_label_format_strings)
-							snprintf(label, 127, occupied_workspace_label_format, "", icon);
-						else
-							snprintf(label, 127, occupied_workspace_label_format, icon, "");
-					} else {
-						w += occupied_workspace_label_format_length + TEXTW(c->label);
-						if (swap_occupied_workspace_label_format_strings)
-							snprintf(label, 127, occupied_workspace_label_format, c->label, icon);
-						else
-							snprintf(label, 127, occupied_workspace_label_format, icon, c->label);
-					}
+					w += occupied_workspace_label_format_length + TEXTW(c->label);
+					snprintf(label, 128, occupied_workspace_label_format, icon, c->label);
 				} else {
 					w += vacant_workspace_label_format_length;
-					snprintf(label, 127, vacant_workspace_label_format, icon);
+					snprintf(label, 128, vacant_workspace_label_format, icon);
 				}
 				icon = label;
 			}
-
-			if (draw_window_icon) {
-				if (swap_occupied_workspace_label_format_strings) {
-					drw_2dtext(drw, x, y, w + c->icw, h, c->icw + padding / 2, icon, inv, 1, wsscheme);
-					drw_pic(drw, x + padding / 2, y + (h - c->ich) / 2, c->icw, c->ich, c->icon);
-				} else {
-					drw_2dtext(drw, x, y, w + c->icw, h, padding / 2, icon, inv, 1, wsscheme);
-					drw_pic(drw, x + w - padding / 2, y + (h - c->ich) / 2, c->icw, c->ich, c->icon);
-				}
-				w += c->icw;
-			} else {
-				drw_2dtext(drw, x, y, w, h, padding / 2, icon, inv, 1, wsscheme);
-			}
+			drw_2dtext(drw, x, y, w, h, padding / 2, icon, inv, 1, wsscheme);
 
 			if (plw && nextws)
 				drw_arrow(drw, x + w, y, plw, h, a->value, scheme[wsscheme][ColBg], scheme[nextscheme][ColBg], scheme[SchemeNorm][ColBg]);
@@ -163,18 +132,12 @@ click_workspaces(Bar *bar, Arg *arg, BarArg *a)
 		w = TEXT2DW(wsicon(ws));
 		if (!w)
 			continue;
-
 		if (enabled(WorkspaceLabels)) {
 			c = firsttiled(ws);
-			if (c) {
-				if (c->icon && prefer_window_icons_over_workspace_labels) {
-					w += occupied_workspace_label_format_length + c->icw;
-				} else {
-					w += occupied_workspace_label_format_length + TEXTW(c->label);
-				}
-			} else {
+			if (c)
+				w += occupied_workspace_label_format_length + TEXTW(c->label);
+			else
 				w += vacant_workspace_label_format_length;
-			}
 		}
 		if (bar->vert)
 			s += bh;
@@ -220,15 +183,10 @@ hover_workspaces(Bar *bar, BarArg *a, XMotionEvent *ev)
 			continue;
 		if (enabled(WorkspaceLabels)) {
 			c = firsttiled(ws);
-			if (c) {
-				if (c->icon && prefer_window_icons_over_workspace_labels) {
-					w += occupied_workspace_label_format_length + c->icw;
-				} else {
-					w += occupied_workspace_label_format_length + TEXTW(c->label);
-				}
-			} else {
+			if (c)
+				w += occupied_workspace_label_format_length + TEXTW(c->label);
+			else
 				w += vacant_workspace_label_format_length;
-			}
 		}
 		if (bar->vert)
 			s += bh;
@@ -277,7 +235,7 @@ saveclientclass(Client *c)
 {
 	XClassHint ch = { NULL, NULL };
 	XGetClassHint(dpy, c->win, &ch);
-	strlcpy(c->label, ch.res_class ? ch.res_class : broken, sizeof c->label);
+	strcpy(c->label, ch.res_class ? ch.res_class : broken);
 	if (lowercase_workspace_labels)
 		c->label[0] = tolower(c->label[0]);
 }

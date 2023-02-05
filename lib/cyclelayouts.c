@@ -1,10 +1,16 @@
 void
 cyclelayout(const Arg *arg)
 {
-	int i;
-	int num_layouts = LENGTH(layouts);
-
-	for (i = 0; i < num_layouts && &layouts[i] != selws->layout; i++);
-	i += arg->i;
-	setlayout(&((Arg) { .i = (i % num_layouts + num_layouts) % num_layouts })); // modulo
+	Workspace *ws = selws;
+	Layout *l;
+	for (l = (Layout *)layouts; l != ws->layout; l++);
+	setlayout(&((Arg) { .v =
+		arg->i > 0
+		? l->symbol && (l + 1)->symbol
+			? l + 1
+			: layouts
+		: l != layouts && (l - 1)->symbol
+			? l - 1
+			: &layouts[LENGTH(layouts) - 1]
+	}));
 }

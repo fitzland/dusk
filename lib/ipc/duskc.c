@@ -47,9 +47,7 @@ typedef enum IPCMessageType {
 	IPC_TYPE_GET_WORKSPACES = 2,
 	IPC_TYPE_GET_LAYOUTS = 3,
 	IPC_TYPE_GET_CLIENT = 4,
-	IPC_TYPE_GET_SETTINGS = 5,
-	IPC_TYPE_GET_SYSTRAY_ICONS = 6,
-	IPC_TYPE_GET_COMMANDS = 7,
+	IPC_TYPE_GET_SETTINGS = 5
 } IPCMessageType;
 
 // Every IPC message must begin with this
@@ -416,24 +414,6 @@ get_settings()
 	return 0;
 }
 
-static int
-get_commands()
-{
-	send_message(IPC_TYPE_GET_COMMANDS, 1, (uint8_t *)"");
-	print_socket_reply();
-
-	return 0;
-}
-
-static int
-get_systray_windows()
-{
-	send_message(IPC_TYPE_GET_SYSTRAY_ICONS, 1, (uint8_t *)"");
-	print_socket_reply();
-
-	return 0;
-}
-
 static void
 usage_error(const char *prog_name, const char *format, ...)
 {
@@ -466,10 +446,6 @@ print_usage(const char *name)
 	puts("  get_workspaces                  Get list of workspaces");
 	puts("");
 	puts("  get_settings                    Get list of settings");
-	puts("");
-	puts("  get_commands                    Get list of commands");
-	puts("");
-	puts("  get_systray_windows             Get list of system tray windows");
 	puts("");
 	puts("  help                            Display this message");
 	puts("");
@@ -523,10 +499,6 @@ main(int argc, char *argv[])
 		get_workspaces();
 	} else if (strcmp(argv[i], "get_settings") == 0) {
 		get_settings();
-	} else if (strcmp(argv[i], "get_commands") == 0) {
-		get_commands();
-	} else if (strcmp(argv[i], "get_systray_windows") == 0) {
-		get_systray_windows();
 	} else
 		usage_error(prog_name, "Invalid argument '%s'", argv[i]);
 

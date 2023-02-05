@@ -13,7 +13,6 @@ static char * wsicon(Workspace *ws);
 static int hasclients(Workspace *ws);
 static int hashidden(Workspace *ws);
 static int hasfloating(Workspace *ws);
-static int ismasterclient(Client *c);
 static void adjustwsformonitor(Workspace *ws, Monitor *m);
 static Workspace * getwsbyname(const Arg *arg);
 static Workspace * getwsbyindex(int index);
@@ -32,11 +31,10 @@ static void drawws(Workspace *ws, Monitor *m, uint64_t prevwsmask, int enablews,
 
 static void movews(const Arg *arg);
 static void movewsdir(const Arg *arg);
-static void movetows(Client *c, Workspace *ws, int view_workspace);
+static void movetows(Client *c, Workspace *ws);
 static void movetowsbyname(const Arg *arg);
-static unsigned int numtiled(Workspace *ws);
 static void sendtowsbyname(const Arg *arg);
-static void moveallclientstows(Workspace *from, Workspace *to, int view_workspace);
+static void moveallclientstows(Workspace *from, Workspace *to);
 static void moveallfromwsbyname(const Arg *arg);
 static void movealltowsbyname(const Arg *arg);
 
@@ -56,7 +54,6 @@ static void viewwsonmon(Workspace *ws, Monitor *m, int enablews);
 
 static void assignworkspacetomonitor(Workspace *ws, Monitor *m);
 static void redistributeworkspaces(Monitor *new);
-static void setwfact(const Arg *arg);
 static void setworkspaceareas();
 static void setworkspaceareasformon(Monitor *mon);
 static Workspace * nextmonws(Monitor *mon, Workspace *ws);

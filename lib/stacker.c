@@ -13,7 +13,7 @@ stackfocus(const Arg *arg)
 	focus(c ? c : p);
 	arrangews(ws);
 	skipfocusevents();
-	if (canwarp(ws))
+	if (enabled(Warp))
 		warp(ws->sel);
 }
 
@@ -41,7 +41,7 @@ stackpush(const Arg *arg)
 	}
 	arrange(ws);
 	skipfocusevents();
-	if (canwarp(ws))
+	if (enabled(Warp))
 		warp(ws->sel);
 }
 

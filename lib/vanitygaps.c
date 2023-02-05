@@ -155,9 +155,11 @@ incrivgaps(const Arg *arg)
 static void
 getgaps(Workspace *ws, int *oh, int *ov, int *ih, int *iv, unsigned int *nc)
 {
-	unsigned int oe, ie, n = numtiled(ws);
+	unsigned int n, oe, ie;
 	oe = ie = ws->enablegaps;
+	Client *c;
 
+	for (n = 0, c = nexttiled(ws->clients); c; c = nexttiled(c->next), n++);
 	if (enabled(SmartGaps) && n == 1) {
 		oe = smartgaps_fact; // outer gaps disabled or multiplied when only one client
 	}

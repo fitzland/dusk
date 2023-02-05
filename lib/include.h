@@ -23,14 +23,13 @@
 
 /* Other functionality */
 #include "attachx.h"
-#include "autostart.h"
 #include "cfacts.h"
 #include "clientopacity.h"
+#include "cool_autostart.h"
 #include "cyclelayouts.h"
 #include "decorationhints.h"
 #include "dragcfact.h"
 #include "dragmfact.h"
-#include "dragwfact.h"
 #include "dragfact.h"
 #include "ewmh.h"
 #include "group.h"

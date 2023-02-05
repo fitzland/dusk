@@ -59,7 +59,6 @@ createworkspace(int num, const WorkspaceRule *r)
 	ws = ecalloc(1, sizeof(Workspace));
 	ws->num = num;
 	ws->pinned = 0;
-	ws->wfact = 1.0;
 
 	if (r->monitor != -1) {
 		for (m = mons; m && m->num != r->monitor; m = m->next);
@@ -68,7 +67,7 @@ createworkspace(int num, const WorkspaceRule *r)
 			ws->pinned = 1;
 	}
 
-	strlcpy(ws->name, r->name, sizeof ws->name);
+	strcpy(ws->name, r->name);
 
 	ws->layout = (r->layout == -1 ? &layouts[0] : &layouts[MIN(r->layout, LENGTH(layouts))]);
 	ws->prevlayout = &layouts[1 % LENGTH(layouts)];
@@ -140,15 +139,18 @@ viewwsmask(Monitor *m, uint64_t wsmask)
 {
 	Workspace *ws;
 	uint64_t currmask = getwsmask(m);
+	int wasvisible;
 
 	if (wsmask == currmask)
 		wsmask = m->wsmask;
 	m->wsmask = currmask;
 
-	for (ws = nextmonws(m, workspaces); ws; ws = nextmonws(m, ws->next))
+	for (ws = nextmonws(m, workspaces); ws; ws = nextmonws(m, ws->next)) {
+		wasvisible = ws->visible;
 		ws->visible = wsmask & (1L << ws->num);
-
-	selws = m->selws = nextvismonws(m, workspaces);
+		if (wasvisible && !ws->visible)
+			hidews(ws);
+	}
 
 	drawws(NULL, m, currmask, 1, 0, 0);
 }
@@ -189,18 +191,6 @@ hasfloating(Workspace *ws)
 
 	for (c = ws->clients; c && (ISINVISIBLE(c) || SKIPTASKBAR(c) || HIDDEN(c) || !ISFLOATING(c)); c = c->next);
 	return c != NULL;
-}
-
-int
-ismasterclient(Client *c)
-{
-	Client *i;
-	int n;
-	for (n = 0, i = nexttiled(c->ws->clients); i && n < c->ws->nmaster; i = nexttiled(i->next), ++n)
-		if (i == c)
-			return 1;
-
-	return 0;
 }
 
 void
@@ -302,16 +292,7 @@ movews(const Arg *arg)
 {
 	Workspace *ws = (Workspace*)arg->v;
 	Client *c = selws->sel;
-	movetows(c, ws, enabled(ViewOnWs));
-}
-
-unsigned int
-numtiled(Workspace *ws)
-{
-	Client *c;
-	unsigned int n;
-	for (n = 0, c = nexttiled(ws->clients); c; c = nexttiled(c->next), n++);
-	return n;
+	movetows(c, ws);
 }
 
 void
@@ -373,7 +354,7 @@ swapwsclients(Workspace *ws1, Workspace *ws2)
 }
 
 void
-movetows(Client *c, Workspace *ws, int view_workspace)
+movetows(Client *c, Workspace *ws)
 {
 	if (!c || !ws || ISSTICKY(c))
 		return;
@@ -402,7 +383,7 @@ movetows(Client *c, Workspace *ws, int view_workspace)
 
 		clientfsrestore(c);
 
-		if (!view_workspace && !ws->visible)
+		if (!enabled(ViewOnWs) && !ws->visible)
 			hide(c);
 	}
 
@@ -414,19 +395,17 @@ movetows(Client *c, Workspace *ws, int view_workspace)
 	else
 		focus(NULL);
 
-	if (view_workspace && !ws->visible)
+	if (enabled(ViewOnWs) && !ws->visible)
 		viewwsonmon(ws, ws->mon, 0);
 	else if (ws->visible) {
 		arrange(ws);
-		if (view_workspace && hadfocus)
+		if (enabled(ViewOnWs) && hadfocus)
 			warp(hadfocus);
-	} else {
-		drawbar(ws->mon);
 	}
 }
 
 void
-moveallclientstows(Workspace *from, Workspace *to, int view_workspace)
+moveallclientstows(Workspace *from, Workspace *to)
 {
 	Client *clients = from->clients;
 
@@ -443,7 +422,7 @@ moveallclientstows(Workspace *from, Workspace *to, int view_workspace)
 	from->clients = NULL;
 	from->stack = NULL;
 
-	if (view_workspace && !to->visible)
+	if (enabled(ViewOnWs) && !to->visible)
 		viewwsonmon(to, to->mon, 0);
 
 	if (from->visible)
@@ -465,32 +444,34 @@ moveallclientstows(Workspace *from, Workspace *to, int view_workspace)
 void
 movetowsbyname(const Arg *arg)
 {
-	movetows(selws->sel, getwsbyname(arg), 1);
+	movetows(selws->sel, getwsbyname(arg));
 }
 
 void
 sendtowsbyname(const Arg *arg)
 {
-	movetows(selws->sel, getwsbyname(arg), 0);
+	togglefunc(ViewOnWs);
+	movetows(selws->sel, getwsbyname(arg));
+	togglefunc(ViewOnWs);
 }
 
 void
 movealltowsbyname(const Arg *arg)
 {
-	moveallclientstows(selws, getwsbyname(arg), enabled(ViewOnWs));
+	moveallclientstows(selws, getwsbyname(arg));
 }
 
 void
 moveallfromwsbyname(const Arg *arg)
 {
-	moveallclientstows(getwsbyname(arg), selws, 0);
+	moveallclientstows(getwsbyname(arg), selws);
 }
 
 /* Send client to an adjacent workspace on the current monitor */
 void
 movewsdir(const Arg *arg)
 {
-	movetows(selws->sel, dirtows(arg->i), enabled(ViewOnWs));
+	movetows(selws->sel, dirtows(arg->i));
 }
 
 /* View an adjacent workspace on the current monitor */
@@ -691,8 +672,7 @@ drawws(Workspace *ws, Monitor *m, uint64_t prevwsmask, int enablews, int arrange
 
 	setworkspaceareas();
 
-	/* Clear the selected workspace for a monitor if there are no visible workspaces,
-	 * likewise set the selected workspace for the monitor if present and not already set. */
+	/* Clear the selected workspace for a monitor if there are no visible workspaces */
 	for (mon = mons; mon; mon = mon->next) {
 		w = nextvismonws(mon, workspaces);
 		if (!w)
@@ -825,31 +805,6 @@ redistributeworkspaces(Monitor *new)
 }
 
 void
-setwfact(const Arg *arg)
-{
-	float f;
-	Workspace *ws = selws;
-
-	if (!ws)
-		return;
-
-	if (!arg->f)
-		f = 1.0;
-	else if (arg->f < 4.0)
-		f = arg->f + ws->wfact;
-	else // set fact absolutely
-		f = arg->f - 4.0;
-	if (f < 0.25)
-		f = 0.25;
-	else if (f > 4.0)
-		f = 4.0;
-	ws->wfact = f;
-
-	setworkspaceareasformon(ws->mon);
-	arrangemon(ws->mon);
-}
-
-void
 setworkspaceareas()
 {
 	Monitor *mon;
@@ -858,20 +813,19 @@ setworkspaceareas()
 }
 
 void
-setworkspaceareasformon(Monitor *m)
+setworkspaceareasformon(Monitor *mon)
 {
 	Workspace *ws;
-	int i, crest, colw, cols, rows, cx, cy, cw, ch, cn, rn, wc, nw;
-	float wfacts_total = 0;
+	int rrest, crest, cols, rows, cw, ch, cn, rn, cc, nw, x, y;
 
 	/* get a count of the number of visible workspaces for this monitor */
-	for (nw = 0, ws = nextvismonws(m, workspaces); ws; ws = nextvismonws(m, ws->next), ++nw);
+	for (nw = 0, ws = nextvismonws(mon, workspaces); ws; ws = nextvismonws(mon, ws->next), ++nw);
 	if (!nw)
 		return;
 
 	/* grid dimensions */
-	if (m->ww > m->wh) {
-		if (m->ww / nw < m->wh / 2) {
+	if (mon->ww > mon->wh) {
+		if (mon->ww / nw < mon->wh / 2) {
 			rows = 2;
 			cols = nw / rows + (nw - rows * (nw / rows));
 		} else {
@@ -879,7 +833,7 @@ setworkspaceareasformon(Monitor *m)
 			cols = nw;
 		}
 	} else {
-		if (m->wh / nw < m->ww / 2) {
+		if (mon->wh / nw < mon->ww / 2) {
 			cols = 2;
 			rows = nw / cols + (nw - cols * (nw / cols));
 		} else {
@@ -888,70 +842,33 @@ setworkspaceareasformon(Monitor *m)
 		}
 	}
 
-	crest = colw = m->ww;
+	/* window geoms (cell height/width) */
+	ch = mon->wh / rows;
+	rrest = mon->wh % rows;
+	cw = mon->ww / cols;
+	crest = mon->ww % cols;
+	x = mon->wx;
+	y = mon->wy;
 
-	float wfacts[cols];
-	int rrests[cols];
-	for (i = 0; i < cols; i++) {
-		wfacts[i] = 0;
-		rrests[i] = 0;
-	}
-
-	/* Sum wfacts for columns */
-	cn = rn = 0; /* reset column no, row no */
-	for (ws = nextvismonws(m, workspaces); ws; ws = nextvismonws(m, ws->next)) {
-		wfacts[cn] += ws->wfact;
-		wfacts_total += ws->wfact;
-		rn++;
-		if (rn >= rows) {
-			rn = 0;
-			cn++;
-		}
-	}
-
-	/* Work out wfact remainders */
-	cn = rn = 0; /* reset column no, row no */
-	for (ws = nextvismonws(m, workspaces); ws; ws = nextvismonws(m, ws->next)) {
-		rrests[cn] += m->wh * (ws->wfact / wfacts[cn]);
-		rn++;
-		if (rn >= rows) {
-			rn = 0;
-			cn++;
-		}
-	}
-
-	/* Now wfacts and rrests contain a sum of height and width used. This goes through each
-	 * column and make sure that we only store the remainder. */
-	for (i = 0; i < cols; i++) {
-		crest -= (int)(colw * (wfacts[i] / wfacts_total));
-		rrests[i] = m->wh - rrests[i];
-	}
-
-	cx = m->wx;
-	cy = m->wy;
-
-	cn = rn = wc = 0; /* reset column no, row no, workspace count */
-	for (ws = nextvismonws(m, workspaces); ws; ws = nextvismonws(m, ws->next)) {
-		if ((rows * cols) > nw && wc + 1 == nw) {
+	cn = rn = cc = 0; // reset column no, row no, workspace count
+	for (ws = nextvismonws(mon, workspaces); ws; ws = nextvismonws(mon, ws->next)) {
+		if ((rows * cols) > nw && cc + 1 == nw) {
 			rows = 1;
-			ch = m->wh;
+			ch = mon->wh;
+			rrest = 0;
 		}
 
-		cw = (int)(colw * (wfacts[cn] / wfacts_total)) + (cn < crest ? 1 : 0);
-		ch = m->wh * ((double)ws->wfact / (double)wfacts[cn]) + (rn < rrests[cn] ? 1 : 0);
+		ws->wx = x;
+		ws->wy = y + rn * ch + MIN(rn, rrest);
+		ws->wh = ch + (rn < rrest ? 1 : 0);
+		ws->ww = cw + (cn < crest ? 1 : 0);
 
-		ws->ww = cw;
-		ws->wh = ch;
-		ws->wx = cx;
-		ws->wy = cy;
 		rn++;
-		wc++;
-		cy += ch;
+		cc++;
 		if (rn >= rows) {
 			rn = 0;
-			cx += cw + (cn < crest ? 1 : 0);
+			x += cw + (cn < crest ? 1 : 0);
 			cn++;
-			cy = m->wy;
 		}
 	}
 }
